@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Christmas for the Phantom</title>
+	<meta charset="UTF-8">
+	<meta name="ROBOTS" content="NOINDEX, NOFOLLOW">
+	<meta http-equiv='Content-Style-Type' content='text/javascript'>
+	<style type="text/css">
+		canvas { background:#aAaAaA;}
+		.pointStatus{float:left;}
+		#texts{float: left;}
+		#timer{color: red;}
+		.clearfix:after{
+			content: "";
+			display: block;
+			line-height: 0;
+		}
+		.float{float:left;}
+		.animation {
+			animation: translate 0.25s;
+			animation-iteration-count: 1;
+		}
+		@keyframes translate {
+			0%		{transform : translate(-5px, 0px);}
+			20%		{transform : translate(0px, 0px);}
+			40%		{transform : translate(-3px, 0px);}
+			60%		{transform : translate(0px, 0px);}
+			80%		{transform : translate(-1px, 0px);}
+			100%	{transform : translate(0px, 0px);}
+		}
+
+	</style>
+</head>
+<body>
+<script type="text/javascript" src=""></script>
+<h1>Christmas for the Phantom</h1>
+<div id="mark">
+	<canvas id="MyCanvas" class="float" width="500" height="500">
+	</canvas>
+</div>
+	<div id="texts" class="clearfix">
+		<p id="textArea"></p>
+		<p id="textArea_comment"></p>
+		<p id="redStatus"></p>
+		<div class="clearfix">
+			<p id="blueStatus" class="pointStatus"></p>
+			<p id="greenStatus" class="pointStatus"></p>
+			<p id="yellowStatus" class="pointStatus"></p>
+		</div>
+		<p id="timer" class="float"></p>
+	</div>
+<script>
+
+//ゲームステージ
+var area = {
+	width   : 500,
+	height  : 500
+};
+
+//赤い四角
+var red = {
+	x : 250,
+	y : 250,
+	width : 10,
+	height : 10,
+	point : 0,
+	damage : 0,
+	life : 100,
+	maxLife : 100
+};
+
+//敵情報
+var enemyList = [
+	{name:'blue', x:0, y:0, directionX:0, directionY:0, width:20, height:20, attack:5, destroy:0, destroyMax:5, hit:false, getPoint:10, r:0, g:0, b:255, a:0.5},
+	{name:'green', x:0, y:0, directionX:0, directionY:0, width:20, height:20, attack:15, destroy:0, destroyMax:10, hit:false, getPoint:20, r:0, g:255, b:0, a:0.5},
+	{name:'yellow', x:0, y:0, directionX:0, directionY:0, width:20, height:20, attack:10, destroy:0, destroyMax:10, hit:false, getPoint:30, r:255, g:255, b:0, a:0.5},
+];
+var rDirection = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
+var gameOver = 0;
+var enemyAllDead = 0;
+var gameStartTime = new Date();
+var remainingTime = 0;
+var fps = 20;
+var mspf = 1000 / fps;
+var deltaTime = 0;
+var spendingTime = 0;
+var loopStartTime = 0;
+
+//canvas使用設定
+var canvas = document.getElementById('MyCanvas');
+if (canvas.getContext){
+	var ctx = canvas.getContext('2d');
+}
+
+//ゲーム持ち時間設定
+var second = 100;//秒設定
+var timeLimit = second * 1000;
+var startTime = 0;
+
+//敵の初期スピード
+function rDecision(){
+	rdm = Math.floor(Math.random() * 11);
+	if(rdm >= 4 && rdm <= 8 ){
+		rDecision();
+	}
+	return rdm;
+}
+for(i = 0; i < enemyList.length; i++){
+	enemyList[i].x = rDecision() * 42;
+	enemyList[i].y = rDecision() * 42;
+}
+
+//敵の初期スピード
+for(i = 0; i < enemyList.length; i++){
+	enemyList[i].directionX = rDirection[Math.floor(Math.random() * 11)];
+	enemyList[i].directionY = rDirection[Math.floor(Math.random() * 11)];
+}
+
+//ゲーム本体ループプログラム
+window.onload = function startGame(){
+	var startMusic = new Audio('./sounds/26522_seasons-greetings-christmas-chime-bridge-css026201_proud_music_preview.mp3').play();
+	if(startMusic.currentTime >= 4){
+		startMusic.pause();
+	}
+setTimeout(gaming,1*1000);
+function gaming(){
+	loopStartTime = new Date();
+	movePlayer();
+	document.getElementById("mark").className = "";
+
+//レッド描画
+	ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+	ctx.fillRect(red.x - red.width / 2, red.y - red.height / 2, red.width, red.height);
+
+//敵の動き決定
+	for(var k = 0; k < enemyList.length; k++){
+		ctx.fillStyle = "rgba(" + enemyList[k].r + ", " + enemyList[k].g + ", " + enemyList[k].b + ", " + enemyList[k].a + ")";
+		ctx.fillRect(enemyList[k].x - enemyList[k].width / 2, enemyList[k].y - enemyList[k].height / 2, enemyList[k].width, enemyList[k].height);
+		if(enemyList[k].destroy < enemyList[k].destroyMax){
+			if(
+				enemyList[k].x <= enemyList[k].width / 2
+				||
+				enemyList[k].x >= area.width - enemyList[k].width / 2
+				||
+				enemyList[k].y <= enemyList[k].height / 2
+				||
+				enemyList[k].y >= area.height - enemyList[k].height / 2
+				)
+			{
+				enemyList[k].directionX = rDirection[Math.floor(Math.random()*11)];
+				enemyList[k].directionY = rDirection[Math.floor(Math.random()*11)];
+			}
+			enemyList[k].x += enemyList[k].directionX;
+			enemyList[k].y += enemyList[k].directionY;
+		}
+
+		if(enemyList[k].destroy < enemyList[k].destroyMax){
+			if(enemyList[k].x < enemyList[k].width / 2){
+				enemyList[k].x = enemyList[k].width / 2;
+			}
+			if(enemyList[k].x > area.width - enemyList[k].width / 2){
+				enemyList[k].x = area.width - enemyList[k].width / 2;
+			}
+			if(enemyList[k].y < enemyList[k].height / 2){
+				enemyList[k].y = enemyList[k].height / 2;
+			}
+			if(enemyList[k].y > area.height - enemyList[k].height / 2){
+				enemyList[k].y = area.height - enemyList[k].height / 2;
+			}
+		}
+	}
+
+//当たり判定
+	for(var i = 0; i < enemyList.length; i++){
+		if(
+			Math.abs(red.x - enemyList[i].x) < red.width / 2 + enemyList[i].width / 2
+			&&
+			Math.abs(red.y - enemyList[i].y) < red.height / 2 + enemyList[i].height / 2
+			&&
+			!enemyList[i].hit
+			)
+		{
+			hitDetection(i);
+		}
+
+		if (
+			Math.abs(red.x - enemyList[i].x) < red.width / 2 + enemyList[i].width / 2
+			&&
+			Math.abs(red.y - enemyList[i].y) < red.height / 2 + enemyList[i].height / 2
+			)
+		{
+			enemyList[i].hit = true;
+		}else{
+			enemyList[i].hit = false;
+		}
+	}
+
+//タイム設定
+	var nowTime = new Date();
+	spendingTime = nowTime - gameStartTime;
+	if(!(gameOver || enemyAllDead == 3)){
+		remainingTime = Math.floor((timeLimit - spendingTime) / 1000);
+	}
+
+//メインループ起動
+	var intervalTime = nowTime - loopStartTime;
+	deltaTime = mspf - intervalTime;
+	if(remainingTime > 0){
+		if(deltaTime > 0){
+console.log(deltaTime);
+			var gameTime = window.setTimeout(drawRect, deltaTime);
+			function drawRect(){
+				ctx.clearRect(0, 0, 500, 500);
+				gaming();
+			}
+		}else{
+console.log(deltaTime);
+			var gameTime = window.setTimeout(drawRect,mspf);
+			function drawRect(){
+				ctx.clearRect(0, 0, 500, 500);
+				gaming();
+			}
+		}
+	}else{
+		clearInterval(gameTime);
+		new Audio("./sounds/SE194.WAV").play();
+		document.getElementById('textArea').innerHTML = '<br>Time-out! Game Over';
+	}
+	document.getElementById('redStatus').innerHTML =  '体力:' + red.life;
+	document.getElementById('blueStatus').innerHTML = 'blue:' + enemyList[0].destroy + '/' + enemyList[0].destroyMax + '&nbsp';
+	document.getElementById('greenStatus').innerHTML = 'green:' + enemyList[1].destroy + '/' + enemyList[1].destroyMax + '&nbsp';
+	document.getElementById('yellowStatus').innerHTML = 'yellow:' + enemyList[2].destroy + '/' + enemyList[2].destroyMax + '&nbsp';
+	document.getElementById('timer').innerHTML = '残り時間:' + remainingTime;
+}//gaming()
+}//gameStart()
+//hit時の処理
+function hitDetection(enemyColor){
+	enemyList[enemyColor].destroy += 1;
+	red.life -= enemyList[enemyColor].attack;
+	playerDead();
+	enemyDestroy(enemyColor);
+	document.getElementById("mark").className = "animation";
+	if(enemyList[enemyColor].destroy == 5){
+		new Audio("./sounds/djscrtch.wav").play();
+	}else{
+		new Audio("./sounds/SE042.mp3").play();
+	}
+	console.log('hit');
+}
+
+//プレイヤーの死亡
+function playerDead(){
+	if(red.life <= 0){
+		gameOver = true;
+		red.x = -50;
+		red.y = -50;
+		new Audio("./sounds/SE053.WAV").play();
+		console.log('gameOver:%d', gameOver);
+		document.getElementById('textArea').innerHTML = '<br>Game Over! Challenge to Next!';
+	}
+}
+
+//敵の死亡
+function enemyDestroy(j){
+	if(enemyList[j].destroy >= enemyList[j].destroyMax){
+			enemyList[j].derectionX = 0;
+			enemyList[j].derectionY = 0;
+			enemyList[j].x = -enemyList[j].width;
+			enemyList[j].y = -enemyList[j].height;
+			red.point += enemyList[j].getPoint;
+			document.getElementById('textArea_comment').innerHTML = red.point+'Point';
+			console.log(document.getElementById('textArea').innerHTML);
+			enemyAllDead += 1;
+			console.log('enemyAllDead1:%d', enemyAllDead);
+			if(enemyAllDead == enemyList.length){
+				console.log('enemyAllDead2:%d', enemyAllDead);
+				new Audio("./sounds/SE185.WAV").play();
+				document.getElementById('textArea_comment').innerHTML = 'Clear! Congratuation!';
+			}
+		}
+	}
+
+//キーイベントを配列で状態管理
+var keys = new Array(4);
+for(var i = 0; i < keys.length; i++) {
+	keys[i] = false;
+}
+window.onkeydown = function(e) {
+	// キーを押された状態に更新
+	keys[e.keyCode] = true;
+}
+window.onkeyup = function(e) {
+	// キーを離された状態に更新
+	keys[e.keyCode] = false;
+	console.log(keys);
+}
+
+var speed = 5;
+// キー番号だとわかりにくいため予め変数に格納
+var right = 39;
+var left = 37;
+var up  = 38;
+var down  = 40;
+function movePlayer(){
+	if(red.life > 0){
+		if (keys[left]){ //「←」キー押した時用(左移動)
+			if(red.x > red.width / 2){
+				red.x -= speed;
+			}
+		}//(event.keyCode === 37)
+		if (keys[right]){ //「→」キー押した時用(右移動)
+			if(red.x < area.width-red.width / 2){
+				red.x += speed;
+			}
+		}//(event.keyCode === 39)
+		if (keys[up]){ //「↑」キー押した時用(上移動)
+			if(red.y > red.height / 2){
+				red.y -= speed;
+			}
+		}//(event.keyCode === 38)
+		if (keys[down]){ //「↓」キー押した時用(下移動)
+			if(red.y < area.height-red.height / 2){
+				red.y += speed;
+			}
+		}//if (event.keyCode === 40)
+	}
+};
+
+	var recoverId = window.setInterval(recover,500);
+	function recover(){
+		if(remainingTime > 0){
+			if(red.life < 100){
+				red.life += 1;
+			}
+			if(gameOver || enemyAllDead == 3){
+				clearInterval(recoverId);
+			}
+		}
+	}
+	</script>
+</body>
+</html>
